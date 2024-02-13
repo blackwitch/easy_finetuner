@@ -6,6 +6,7 @@ import random
 import pandas as pd
 import shutil
 from trainer import Trainer
+from datasetbuilder import DataSetBuilder
 
 LORA_DIR = 'lora'
 
@@ -85,7 +86,24 @@ def random_name():
 class UI():
     def __init__(self):
         self.trainer = Trainer()
+        self.builder = DataSetBuilder()
         self.dataset = []
+
+
+    def file_selector(self, uploader):    # 파일 선택을 위한 함수
+        if uploader is not None: # and len(uploader) > 0:
+            return uploader[0]
+        return None
+
+    
+    def display_file_content(self, file): # 파일 내용을 읽어오는 함수
+        try:
+            with open(file, 'r', encoding='utf-8') as file:
+                content = file.read()
+                return content
+        except Exception as e:
+            print(f"Error reading file: {e}")
+            return ""
 
     def load_loras(self):
         loaded_model_name = self.trainer.model_name
@@ -97,6 +115,43 @@ class UI():
             return gr.Dropdown.update(choices=loras)
         else:
             return gr.Dropdown.update(choices=['None'], value='None')
+
+    def file_selected(self, file_input):
+        if file_input != None:
+            print("yes, file_selected is invoked", file_input.name)
+            return self.display_file_content(file_input)
+        return gr.update()
+    
+    def dataset_build(self, documents):
+        dataset = DataSetBuilder()
+        for doc in documents:
+            dataset.add(doc['name'], doc['content'])
+        return dataset
+
+    def reading_dataset_block(self):
+        with gr.Row():
+            with gr.Column():
+                self.file = gr.File(label="파일 선택하기")
+
+                # 선택된 파일의 내용을 출력하는 텍스트 창
+                self.file_content_textbox = gr.TextArea(value="", label="파일 내용")
+
+                self.file.change(fn=self.file_selected, inputs=self.file, outputs=self.file_content_textbox)
+
+                # 실행하기 버튼
+                self.execute_button = gr.Button(value="Build")
+                self.execute_button.click(self.builder.build, [self.file_content_textbox])
+                
+                # clear 버튼
+                self.clear_button = gr.Button(value="Clear")
+                self.clear_button.click(lambda x: gr.update(value=""), [self.file_content_textbox], [self.file_content_textbox], queue=False)
+
+    def building_dataset_block(self):
+        with gr.Row():
+            with gr.Column():
+                example_filename = gr.Textbox(label='dataset_name')
+                gen_btn = gr.Button('Dataset Load')
+
 
     def training_params_block(self):
         with gr.Row():
@@ -166,9 +221,12 @@ class UI():
       #   if type(self.HF_token) == str:
       #     os.environ["HF_token"] = self.HF_token
     # 이부분 테스트중
+        
+
+    def get_directory_names(self, path):
+        return [name for name in os.listdir(path) if os.path.isdir(os.path.join(path, name))]        
+    
     def training_data_block(self):
-
-
           # training_text = gr.TextArea(
           #     lines=20,
           #     label="Training Data",
@@ -181,40 +239,55 @@ class UI():
             col_count=(1, "fixed")
         )
 
-        examples_dir = os.path.join(os.getcwd(), 'example-datasets')
-        if os.path.exists(f'{examples_dir}/.ipynb_checkpoints'):
-          try:
-            os.remove(f'{examples_dir}/.ipynb_checkpoints')
-          except:
-            shutil.rmtree(f'{examples_dir}/.ipynb_checkpoints')
+        src_dir = os.path.join(os.getcwd(), 'datasets')
+        if os.path.exists(f'{src_dir}/.ipynb_checkpoints'):
+            try:
+                os.remove(f'{src_dir}/.ipynb_checkpoints')
+            except:
+                shutil.rmtree(f'{src_dir}/.ipynb_checkpoints')
 
-        def load_example(filename):
-          example_data = load_from_disk(f"{examples_dir}/{filename}")
-          return example_data.to_pandas()
+        self.dataset_filename = gr.Textbox(label='dataset_name')
+        gen_btn = gr.Button('Dataset Load', variant='primary')
 
-        def load_dataset(self,filename):
-          example_data = load_from_disk(f"{examples_dir}/{filename}")
-          self.dataset = example_data
+        def load_dataset(filename):
+            data = load_from_disk(f"{src_dir}/{filename}")
+            self.dataset = data
+            return self.dataset.to_pandas()
 
+        def update_options():
+            options = self.get_directory_names("./datasets")
+            print(options)
+            return options
+        
+        def dataset_list(params):
+            return params
+        
+        def update_options_custom():
+            return gr.Dropdown(choices=update_options(), interactive=True, label="Dataset")
 
-        example_filename = gr.Textbox(label='dataset_name')
-        gen_btn = gr.Button('Dataset Load')
+        try:
+            dropdown = gr.Dropdown(choices=update_options(), label="Dataset")
+            refresh_button = gr.Button("Refresh")
+            
+            gen_btn.click(fn=load_dataset, inputs=[self.dataset_filename], outputs=training_text)
+            dropdown.change(fn=dataset_list, inputs=[dropdown], outputs=[self.dataset_filename])
+            dropdown.change()
+            refresh_button.click(fn=update_options_custom, inputs=[], outputs=[dropdown])
 
-
-
-
+        except Exception as e:
+            print("no dataset ", e)
         # training_text.change(fn=load_example, inputs=training_text, outputs=example_filename)
         # print(example_filename)
-        gr.Examples("./example-datasets", inputs=example_filename)
-        gen_btn.click(fn=load_example, inputs=[example_filename], outputs=training_text)
-        gen_btn.click(fn=load_example, inputs=[example_filename])
-        # train_button = gr.Button('DataSet_load', variant='primary')
-
+        
+        #     gr.Examples("./datasets", inputs=example_filename)
+        #     gen_btn.click(fn=load_example, inputs=[example_filename], outputs=training_text)
+        #     # gen_btn.click(fn=load_example, inputs=[example_filename])
+        #     # train_button = gr.Button('DataSet_load', variant='primary')
+        # except:
+        #     print("no dataset")
         self.training_text = training_text
 
-        # print(example_filename)
-        # print(type(example_filename))
-        return example_filename
+        return self.dataset_filename
         # if data_trigger:
         #   with gr.Column():
         #     example_filename = gr.Textbox(visible=True)
@@ -242,7 +315,7 @@ class UI():
         def train(
             training_text,
             new_lora_name,
-#            max_seq_length,
+            # max_seq_length,
             per_device_train_batch_size,
             per_device_eval_batch_size,
             gradient_accumulation_steps,
@@ -251,11 +324,12 @@ class UI():
             lora_r,
             lora_alpha,
             lora_dropout,
-            HF_token,
-            dataset_name,
+            # HF_token,
+            # dataset_name,
             progress=gr.Progress(track_tqdm=True)
         ):
             self.trainer.unload_lora()
+
 
             self.trainer.train(
                 training_text,
@@ -269,7 +343,7 @@ class UI():
                 learning_rate=learning_rate,
                 lora_r=lora_r,
                 lora_alpha=lora_alpha,
-                lora_dropout=lora_dropout
+                lora_dropout=lora_dropout,
             )
 
             return new_lora_name
@@ -292,6 +366,7 @@ class UI():
             ],
             outputs=[self.new_lora_name]
         )
+
 
         # train_event.then(
         #     fn=lambda x: self.trainer.load_model(x, hf_token=HF_token, force=True),
@@ -347,11 +422,6 @@ class UI():
 
                 with gr.Row():
                     with gr.Column():
-                        self.max_length = gr.Slider(
-                            minimum=0, maximum=4096, step=1, value=GENERATION_PARAMS['max_length'],
-                            label="max_length 설정",
-                        )
-                    with gr.Column():
                         self.do_sample = gr.Checkbox(
                             interactive=True,
                             label="do_sample 설정",
@@ -395,9 +465,9 @@ class UI():
             def generate(
                 prompt,
                 do_sample,
-                max_length,
-#                num_beams,
-               repeat_penalty,
+                # max_length,
+                # num_beams,
+                repeat_penalty,
                 temperature,
                 top_p,
                 top_k,
@@ -406,8 +476,8 @@ class UI():
                 return self.trainer.generate(
                     prompt,
                     do_sample=do_sample,
-                    max_length=max_length,
-#                    num_beams=num_beams,
+                    max_length=100,
+                    # num_beams=num_beams,
                     repetition_penalty=repeat_penalty,
                     temperature=temperature,
                     top_p=top_p,
@@ -419,8 +489,8 @@ class UI():
                 inputs=[
                     self.prompt,
                     self.do_sample,
-                    self.max_length,
-#                    self.num_beams,
+                    # self.max_length,
+                    # self.num_beams,
                     self.repeat_penalty,
                     self.temperature,
                     self.top_p,
@@ -428,23 +498,31 @@ class UI():
                 ],
                 outputs=[self.output]
             )
-
+  
     def layout(self):
         with gr.Blocks(css=customCSS, theme=small_and_beautiful_theme) as demo:
             with gr.Row():
                 with gr.Column():
                     gr.HTML("""<h2>
-                    <a style="text-decoration: none;" href="https://github.com/choijhyeok/easy_finetuner">Easy Finetuner with free T4 GPU</a>&nbsp;
-                    </a></h2><p>무료 colab 기준 GPU인 T4에서 fine-tune을 수행할수 있게 만든 Gradio</p>""")
+                    <a style="text-decoration: none;" href="https://github.com/choijhyeok/easy_finetuner">Easy Finetuner</a>&nbsp;
+                    </a></h2><p> LLM fine tuner on Local PC</p>""")
                 with gr.Column():
                   with gr.Row():
                     HF_token = gr.Textbox(label='HF token', type='password')
                   with gr.Row():
                     self.base_model_block()
+
+            with gr.Tab('Building Dataset'):
+                with gr.Row():
+                    with gr.Column():
+                        self.reading_dataset_block()
+                    with gr.Column():
+                        self.building_dataset_block()
+
             with gr.Tab('Finetuning'):
                 with gr.Row():
                     with gr.Column():
-                         dataset_name = self.training_data_block()
+                        dataset_name = self.training_data_block()
 
                     with gr.Column():
                         self.training_params_block()
@@ -476,7 +554,7 @@ class UI():
 
     def run(self):
         self.ui = self.layout()
-        self.ui.queue().launch(show_error=True, share=SHARE, server_name=SERVER_HOST, server_port=SERVER_PORT)
+        self.ui.queue().launch( show_error=True, share=SHARE, server_name=SERVER_HOST, server_port=SERVER_PORT)
 
 if (__name__ == '__main__'):
     ui = UI()

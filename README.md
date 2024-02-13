@@ -15,6 +15,12 @@ Easy Finetuner는 llama2 계열 모델의 쉬운 fine-tune 방법을 설명하�
 &nbsp;
 
 
+(2024.02.07) 로컬에서 실행할 수 있도록 일부 파일을 수정하고 데이터셋 구축, 추가 모델 적용을 위해 수정하였습니다. 
+
+(torch 2.2.0 , cuda 12.1에 맞춰서 수정되어 있으니 다른 버전을 사용하시는 분은 그에 맞게 수정해 사용하세요.)
+
+&nbsp;
+
 
 ## Custom Dataset 추가방법
 
@@ -36,7 +42,12 @@ pip install -r requirements.txt
 - 모든 Parameter는 colab T4 GPU에 최적화 되도록 설정했습니다. (만약 다른 GPU를 사용하고 싶다면 confing.py에서 fb16, bf16 을 사용하고자 하는 GPU에 맞게 변경해 주세요)
 - huggingface의 PEFT 패키지의 SFTTrainer, lora를 사용합니다.
 - 현재는 llama2 기반의 모델에만 적용가능하게 설정했습니다. (fine-tune, load, inference 모두)
-
+- torch는 다음과 같이 설치하세요.
+&nbsp;
+### torch 설치 (cuda 12.1에 맞는 nightly 버전 설치)
+```
+pip install --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/cu121
+```
 
 &nbsp;
 ## Reference 
