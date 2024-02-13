@@ -271,7 +271,6 @@ class UI():
             
             gen_btn.click(fn=load_dataset, inputs=[self.dataset_filename], outputs=training_text)
             dropdown.change(fn=dataset_list, inputs=[dropdown], outputs=[self.dataset_filename])
-            dropdown.change()
             refresh_button.click(fn=update_options_custom, inputs=[], outputs=[dropdown])
 
         except Exception as e:
