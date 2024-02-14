@@ -252,6 +252,7 @@ class UI():
         def load_dataset(filename):
             data = load_from_disk(f"{src_dir}/{filename}")
             self.dataset = data
+            print("dataset = ", self.dataset, self.dataset.to_pandas())
             return self.dataset.to_pandas()
 
         def update_options():
@@ -265,14 +266,12 @@ class UI():
         def update_options_custom():
             return gr.Dropdown(choices=update_options(), interactive=True, label="Dataset")
 
+        dropdown = gr.Dropdown(choices=update_options(), label="Dataset")
+        refresh_button = gr.Button("Refresh")
+        refresh_button.click(fn=update_options_custom, inputs=[], outputs=[dropdown])
         try:
-            dropdown = gr.Dropdown(choices=update_options(), label="Dataset")
-            refresh_button = gr.Button("Refresh")
-            
             gen_btn.click(fn=load_dataset, inputs=[self.dataset_filename], outputs=training_text)
             dropdown.change(fn=dataset_list, inputs=[dropdown], outputs=[self.dataset_filename])
-            refresh_button.click(fn=update_options_custom, inputs=[], outputs=[dropdown])
-
         except Exception as e:
             print("no dataset ", e)
         # training_text.change(fn=load_example, inputs=training_text, outputs=example_filename)
