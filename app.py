@@ -112,9 +112,9 @@ class UI():
             sanitized_model_name = loaded_model_name.replace('/', '_').replace('.', '_')
             loras = [f for f in loras if f.startswith(sanitized_model_name)]
             loras.insert(0, 'None')
-            return gr.Dropdown.update(choices=loras)
+            return gr.Dropdown(choices=loras)
         else:
-            return gr.Dropdown.update(choices=['None'], value='None')
+            return gr.Dropdown(choices=['None'], value='None')
 
     def file_selected(self, file_input):
         if file_input != None:
@@ -156,11 +156,11 @@ class UI():
     def training_params_block(self):
         with gr.Row():
             with gr.Column():
-                # self.max_seq_length = gr.Slider(
-                #     interactive=True,
-                #     minimum=1, maximum=4096, value=TRAINING_PARAMS['max_seq_length'],
-                #     label="Max Sequence Length",
-                # )
+                self.max_seq_length = gr.Slider(
+                    interactive=True,
+                    minimum=1, maximum=4096, value=512,
+                    label="Max Sequence Length",
+                )
 
                 self.per_device_train_batch_size = gr.Slider(
                     minimum=1, maximum=100, step=1, value=train_confing_dict['per_device_train_batch_size'],
@@ -313,7 +313,7 @@ class UI():
         def train(
             training_text,
             new_lora_name,
-            # max_seq_length,
+            max_seq_length,
             per_device_train_batch_size,
             per_device_eval_batch_size,
             gradient_accumulation_steps,
@@ -332,7 +332,7 @@ class UI():
             self.trainer.train(
                 training_text,
                 new_lora_name,
-#                max_seq_length=max_seq_length,
+                max_seq_length=max_seq_length,
 #                micro_batch_size=micro_batch_size,
                 per_device_train_batch_size=per_device_train_batch_size,
                 per_device_eval_batch_size=per_device_eval_batch_size,
@@ -351,7 +351,7 @@ class UI():
             inputs=[
                 self.training_text,
                 self.new_lora_name,
-#                self.max_seq_length,
+                self.max_seq_length,
 #                self.micro_batch_size,
                 self.per_device_train_batch_size,
                 self.per_device_eval_batch_size,
@@ -392,6 +392,7 @@ class UI():
                     choices=['None'],
                     value='None',
                     label='LoRA',
+                    allow_custom_value=True
                 )
 
                 def load_lora(lora_name, progress=gr.Progress(track_tqdm=True)):

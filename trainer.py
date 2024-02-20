@@ -92,7 +92,7 @@ class Trainer():
             model_name,
             quantization_config=bnb_config,
             device_map=DEVICE_MAP,
-            use_auth_token =hf_token
+            token =hf_token
         )
         self.model.config.use_cache = False
         self.model.config.pretraining_tp = 1
@@ -100,7 +100,7 @@ class Trainer():
         self.loras = {}
 
 
-        self.tokenizer = transformers.AutoTokenizer.from_pretrained(model_name, trust_remote_code=True, use_auth_token =hf_token)
+        self.tokenizer = transformers.AutoTokenizer.from_pretrained(model_name, trust_remote_code=True, token =hf_token)
         self.tokenizer.pad_token = self.tokenizer.eos_token
         self.tokenizer.padding_side = "right"
 
@@ -225,7 +225,7 @@ class Trainer():
         if hasattr(self.model, 'disable_adapter'):
             self.load_model(self.model_name, force=True)
 
-        # self.model = peft.prepare_model_for_int8_training(self.model)
+        # self.model = peft.prepare_model_for_kbit_training(self.model)
         # self.model = peft.get_peft_model(self.model, peft.LoraConfig(
         #     r=kwargs['lora_r'],
         #     lora_alpha=kwargs['lora_alpha'],
@@ -250,6 +250,9 @@ class Trainer():
 
         sanitized_model_name = self.model_name.replace('/', '_').replace('.', '_')
         output_dir = f"lora/{sanitized_model_name}_{new_peft_model_name}"
+
+        print("kwargs = ", kwargs)
+        print("max_seq_length = ", kwargs['max_seq_length'])
 
         training_args = transformers.TrainingArguments(
             output_dir=output_dir,
@@ -309,12 +312,14 @@ class Trainer():
         #             raise RuntimeError("Training aborted.")
         #         return super().training_step(model, inputs)
 
+        print("train_dataset = ", train_dataset)
         self.trainer = SFTTrainer(
             model=self.model,
             train_dataset=train_dataset,
+            eval_dataset=train_dataset,
             peft_config=peft_config,
             dataset_text_field="text",
-            max_seq_length=None,
+            max_seq_length=kwargs['max_seq_length'],
             tokenizer=self.tokenizer,
             args=training_args,
             packing=False,

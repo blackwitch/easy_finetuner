@@ -1,3 +1,6 @@
 __pycache__/*
 datasets/*
 flagged/log.csv
+lora/beomi_llama-2-ko-7b_test-05/runs/Feb15_14-27-30_tsd/events.out.tfevents.1707974851.tsd
+lora/beomi_llama-2-ko-7b_test-05/adapter_model.safetensors
+lora/beomi_llama-2-ko-7b_test-05/adapter_config.json
